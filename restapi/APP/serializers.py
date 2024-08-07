@@ -11,14 +11,19 @@ class TokenUserAuthenticationSerializer(serializers.Serializer):
     password = serializers.CharField()
 
     def validate(self, attrs):
-
         username = attrs.get('username')
         password = attrs.get('password')
 
-        if username and password:
+        if not (username and password):
+            raise serializers.ValidationError('Both username and password are required.')
+        else:
             user = User.objects.filter(username=username).first()
-            if user:
-                if user.check_password(password):
+            if not user:
+                raise serializers.ValidationError('User does not exist.')
+            else:
+                if not user.check_password(password):
+                    raise serializers.ValidationError('Incorrect password.')
+                else:
                     token, created = Token.objects.get_or_create(user=user)
                     profile = user.profile
                     of_class = profile.of_class
@@ -45,9 +50,3 @@ class TokenUserAuthenticationSerializer(serializers.Serializer):
                         'year_id': year.id,
                         'year_link_to_group': year.link_to_group,
                     }
-                else:
-                    raise serializers.ValidationError('Incorrect password.')
-            else:
-                raise serializers.ValidationError('User does not exist.')
-        else:
-            raise serializers.ValidationError('Both username and password are required.')
