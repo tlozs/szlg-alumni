@@ -16,7 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from APP.views import ObtainAuthTokenView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/token/', ObtainAuthTokenView.as_view(), name='api-token'),
 ]
