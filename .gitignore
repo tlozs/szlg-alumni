@@ -1,5 +1,5 @@
-node_modules
-migrations
+node_modules/
+migrations/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
