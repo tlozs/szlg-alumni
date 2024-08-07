@@ -16,9 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from APP.views import ObtainAuthTokenView
+from APP.views import ObtainAuthTokenView, CreateAccountView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/token/', ObtainAuthTokenView.as_view(), name='api-token'),
+    path('api/auth/', ObtainAuthTokenView.as_view(), name='token'),
+    path('api/create-account/', CreateAccountView.as_view(), name='create-account'),
 ]
