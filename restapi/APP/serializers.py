@@ -16,6 +16,8 @@ def seriailze_user(user, token):
         'user_id': user.id,
         'email': user.email,
         'username': user.username,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
         
         'profile_id': profile.id if profile else "",
         'profile_picture': profile.profile_picture if profile else "",
@@ -142,9 +144,9 @@ class CreateAccountSerializer(serializers.Serializer):
             raise serializers.ValidationError('All fields are required.')
         else:
             if User.objects.filter(username=username).exists():
-                raise serializers.ValidationError('Username already exists.')
+                raise serializers.ValidationError('Another user with this username already exists.')
             if User.objects.filter(email=email).exists():
-                raise serializers.ValidationError('Email already exists.')
+                raise serializers.ValidationError('Another user with this email already exists.')
             return attrs
 
     def create(self, validated_data):
@@ -157,10 +159,14 @@ class CreateAccountSerializer(serializers.Serializer):
     
 class EditProfileSerializer(serializers.Serializer):
     class Meta:
-        model = Profile
-        fields = ['profile_picture', 'social_sites', 'life_events', 'location', 'job', 'of_class']
+        model = User, Profile
+        fields = ['email', 'username', 'first_name', 'last_name', 'profile_picture', 'social_sites', 'life_events', 'location', 'job', 'of_class']
     
     token = serializers.CharField()
+    email = serializers.EmailField(max_length=255, required=False)
+    username = serializers.CharField(max_length=150, required=False)
+    first_name = serializers.CharField(max_length=150, required=False)
+    last_name = serializers.CharField(max_length=150, required=False)
     profile_picture = serializers.URLField(max_length=255, allow_blank=True, required=False)
     social_sites = serializers.ListField(child=serializers.DictField(child=serializers.CharField()), required=False)
     life_events = serializers.ListField(child=serializers.DictField(child=serializers.CharField()), required=False)
@@ -170,6 +176,10 @@ class EditProfileSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         token = attrs.get('token')
+        email = attrs.get('email')
+        username = attrs.get('username')
+        first_name = attrs.get('first_name')
+        last_name = attrs.get('last_name')
         profile_picture = attrs.get('profile_picture')
         social_sites = attrs.get('social_sites')
         life_events = attrs.get('life_events')
@@ -181,8 +191,13 @@ class EditProfileSerializer(serializers.Serializer):
             raise serializers.ValidationError('Token is required.')
         if not User.objects.filter(auth_token__key=token).exists():
             raise serializers.ValidationError('Invalid token.')
-        if not (profile_picture or social_sites or life_events or location or job or class_id):
+        if not (email or username or first_name or last_name or profile_picture or social_sites or life_events or location or job or class_id):
             raise serializers.ValidationError('Do not spam with empty requests.')
+        user = User.objects.get(auth_token__key=token)
+        if email and User.objects.filter(email=email).exclude(id=user.id).exists():
+            raise serializers.ValidationError('Another user with this email already exists.')
+        if username and User.objects.filter(username=username).exclude(id=user.id).exists():
+            raise serializers.ValidationError('Another user with this username already exists.')
         if class_id and not Class.objects.filter(id=class_id).exists():
             raise serializers.ValidationError(f'The provided class of id {class_id} in the request does not exist.')
         if social_sites:
@@ -214,6 +229,10 @@ class EditProfileSerializer(serializers.Serializer):
     
     def modify(self, validated_data):
         user = User.objects.get(auth_token__key=validated_data.get('token'))
+        user.email = validated_data.get('email', user.email)
+        user.username = validated_data.get('username', user.username)
+        user.first_name = validated_data.get('first_name', user.first_name)
+        user.last_name = validated_data.get('last_name', user.last_name)
         profile = user.profile if hasattr(user, 'profile') else None
         if profile:
             profile.profile_picture = validated_data.get('profile_picture', profile.profile_picture)
