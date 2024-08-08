@@ -12,9 +12,10 @@ Create virtual environment inside the project root:
 py -m virtualenv -p python3 venv
 ```
 
-Activate venv:
+Activate venv and download dependencies:
 ```
 .\venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 Build and create database inside the ``restapi`` folder:
