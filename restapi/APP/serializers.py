@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
-from APP.models import Profile, Class, SocialSite, LifeEvent
+from APP.models import Profile, Class, SocialSite, LifeEvent, Post
 from django.core.validators import URLValidator
 import datetime
 
@@ -207,7 +207,7 @@ class EditProfileSerializer(serializers.Serializer):
                 if not (site and url):
                     raise serializers.ValidationError('Both site and url fields are required for social sites.')
                 if site not in [pair[0] for pair in SocialSite.SITE_CHOICES]:
-                    raise serializers.ValidationError(f'Invalid social site {site}.')
+                    raise serializers.ValidationError(f'Invalid social site {site}. Must be one of {SocialSite.SITE_CHOICES}.')
                 try:
                     URLValidator()(url)
                 except:
@@ -219,11 +219,11 @@ class EditProfileSerializer(serializers.Serializer):
                 if not (event and date):
                     raise serializers.ValidationError('Both event and date fields are required for life events.')
                 if event not in [pair[0] for pair in LifeEvent.EVENT_CHOICES]:
-                    raise serializers.ValidationError(f'Invalid life event {event}.')
+                    raise serializers.ValidationError(f'Invalid life event {event}. Must be one of {LifeEvent.EVENT_CHOICES}.')
                 try:
                     datetime.datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ')
                 except:
-                    raise serializers.ValidationError(f'Invalid date format for life event {event}.')        
+                    raise serializers.ValidationError(f'Invalid date format for life event {event}. Must be in the format YYYY-MM-DDTHH:MM:SSZ')        
         
         return attrs
     
@@ -263,3 +263,43 @@ class EditProfileSerializer(serializers.Serializer):
                 profile.of_class = Class.objects.get(id=class_id)
                 profile.save()
         return seriailze_user(user, Token.objects.get(user=user))
+
+class CreatePostSerializer(serializers.Serializer):
+    class Meta:
+        model = Post
+        fields = ['content', 'created_at', 'visibility']
+
+    token = serializers.CharField()
+    content = serializers.CharField()
+    visibility = serializers.CharField()
+
+    def validate(self, attrs):
+        token = attrs.get('token')
+        content = attrs.get('content')
+        visibility = attrs.get('visibility')
+
+        if not token:
+            raise serializers.ValidationError('Token is required.')
+        if not User.objects.filter(auth_token__key=token).exists():
+            raise serializers.ValidationError('Invalid token.')
+        if not content:
+            raise serializers.ValidationError('Content is required.')
+        if visibility not in [pair[0] for pair in Post.VISIBILITY_CHOICES]:
+            raise serializers.ValidationError(f'Invalid visibility option {visibility}. Must be one of {Post.VISIBILITY_CHOICES}.')
+        
+        ## User flag to be able to post?????
+        ## post author?????
+        ## get posts, by id, by author, by visibility(, by date)
+        ## edit posts
+        
+        return attrs
+    
+    def create(self, validated_data):
+        content = validated_data.get('content')
+        visibility = validated_data.get('visibility')
+        post = Post.objects.create(content=content, visibility=visibility)
+        return {
+            'content': post.content,
+            'created_at': post.created_at,
+            'visibility': post.visibility,
+        }
