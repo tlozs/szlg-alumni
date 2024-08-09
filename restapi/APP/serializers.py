@@ -133,8 +133,9 @@ class TokenUserAuthenticationSerializer(serializers.Serializer):
                 if not user.check_password(password):
                     raise serializers.ValidationError('Incorrect password.')
                 else:
+                    token, created = Token.objects.get_or_create(user=user)
                     return {
-                        'token': Token.objects.get_or_create(user=user).key,
+                        'token': token.key,
                     }
                 
 class CreateAccountSerializer(serializers.Serializer):
@@ -166,8 +167,9 @@ class CreateAccountSerializer(serializers.Serializer):
         password = validated_data.get('password')
 
         user = User.objects.create_user(username=username, email=email, password=password)
+        token, created = Token.objects.get_or_create(user=user)
         return {
-            'token': Token.objects.get_or_create(user=user).key,
+            'token': token.key,
         }
     
 class EditProfileSerializer(serializers.Serializer):
@@ -302,6 +304,27 @@ class GetUsersSerializer(serializers.Serializer):
     def get_users(self, validated_data):
         users = User.objects.all()
         return [seriailze_user(user) for user in users]
+    
+class GetMeSerializer(serializers.Serializer):
+    class Meta:
+        model = User
+        fields = ['token']
+    
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        token = attrs.get('token')
+
+        if not token:
+            raise serializers.ValidationError('Token is required.')
+        if not User.objects.filter(auth_token__key=token).exists():
+            raise serializers.ValidationError('Invalid token.')
+        
+        return attrs
+    
+    def get_me(self, validated_data):
+        user = User.objects.get(auth_token__key=validated_data.get('token'))
+        return seriailze_user(user)
 
 class CreatePostSerializer(serializers.Serializer):
     class Meta:

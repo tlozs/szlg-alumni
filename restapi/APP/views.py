@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import TokenUserAuthenticationSerializer, CreateAccountSerializer, EditProfileSerializer, CreatePostSerializer, GetUsersSerializer
+from .serializers import TokenUserAuthenticationSerializer, CreateAccountSerializer, EditProfileSerializer, CreatePostSerializer, GetUsersSerializer, GetMeSerializer
 
 class ObtainAuthTokenView(APIView):
     def post(self, request, *args, **kwargs):
@@ -40,3 +40,12 @@ class GetUsersView(APIView):
         if serializer.is_valid():
             get_result = serializer.get_users(serializer.validated_data)
             return Response(get_result, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class GetMeView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = GetMeSerializer(data=request.data)
+        if serializer.is_valid():
+            get_result = serializer.get_me(serializer.validated_data)
+            return Response(get_result, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
