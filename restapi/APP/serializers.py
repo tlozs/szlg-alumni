@@ -5,14 +5,14 @@ from APP.models import Profile, Class, SocialSite, LifeEvent, Post
 from django.core.validators import URLValidator
 import datetime
 
-def seriailze_user(user, token):
+def seriailze_user(user, token=""):
     profile = user.profile if hasattr(user, 'profile') else None
     social_sites = profile.social_sites.all() if profile else None
     life_events = profile.life_events.all() if profile else None
     of_class = profile.of_class if profile else None
     year = of_class.year if of_class else None
     return {
-        'token': token.key,
+        'token': token.key if token else "",
         'user_id': user.id,
         'email': user.email,
         'username': user.username,
@@ -170,7 +170,7 @@ class CreateAccountSerializer(serializers.Serializer):
 class EditProfileSerializer(serializers.Serializer):
     class Meta:
         model = User, Profile
-        fields = ['email', 'username', 'first_name', 'last_name', 'profile_picture', 'social_sites', 'life_events', 'location', 'job', 'of_class']
+        fields = ['email', 'username', 'first_name', 'last_name', 'profile_picture', 'social_sites', 'life_events', 'location', 'job', 'of_class', 'can_post']
     
     token = serializers.CharField()
     email = serializers.EmailField(max_length=255, required=False)
@@ -279,6 +279,27 @@ class EditProfileSerializer(serializers.Serializer):
                 profile.can_post = can_post
                 profile.save()
         return seriailze_user(user, Token.objects.get(user=user))
+
+class GetUsersSerializer(serializers.Serializer):
+    class Meta:
+        model = User
+        fields = ['token']
+    
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        token = attrs.get('token')
+
+        if not token:
+            raise serializers.ValidationError('Token is required.')
+        if not User.objects.filter(auth_token__key=token).exists():
+            raise serializers.ValidationError('Invalid token.')
+        
+        return attrs
+    
+    def get_users(self, validated_data):
+        users = User.objects.all()
+        return [seriailze_user(user) for user in users]
 
 class CreatePostSerializer(serializers.Serializer):
     class Meta:
