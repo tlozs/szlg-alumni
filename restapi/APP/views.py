@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import TokenUserAuthenticationSerializer, CreateAccountSerializer, EditProfileSerializer, CreatePostSerializer, GetUsersSerializer, GetMeSerializer, GetPostsSerializer, DeletePostSerializer
+from .serializers import TokenUserAuthenticationSerializer, CreateAccountSerializer, EditProfileSerializer, CreatePostSerializer, GetUsersSerializer, GetPostsSerializer, DeletePostSerializer
 
 class ObtainAuthTokenView(APIView):
     def post(self, request, *args, **kwargs):
@@ -44,7 +44,7 @@ class GetUsersView(APIView):
     
 class GetMeView(APIView):
     def post(self, request, *args, **kwargs):
-        serializer = GetMeSerializer(data=request.data)
+        serializer = GetUsersSerializer(data=request.data)
         if serializer.is_valid():
             get_result = serializer.get_me(serializer.validated_data)
             return Response(get_result, status=status.HTTP_200_OK)

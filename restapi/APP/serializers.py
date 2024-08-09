@@ -309,18 +309,6 @@ class GetUsersSerializer(serializers.Serializer):
         users = User.objects.all()
         return [seriailze_user(user) for user in users]
     
-class GetMeSerializer(serializers.Serializer):
-    class Meta:
-        model = User
-        fields = ['token']
-    
-    token = serializers.CharField()
-
-    def validate(self, attrs):
-        token = attrs.get('token')
-        validate_token(token)
-        return attrs
-    
     def get_me(self, validated_data):
         user = User.objects.get(auth_token__key=validated_data.get('token'))
         return seriailze_user(user)
@@ -351,8 +339,6 @@ class CreatePostSerializer(serializers.Serializer):
         if type_of_post not in [pair[0] for pair in Post.TYPE_CHOICES]:
             raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
 
-        ## cannot set user can_post if first last name not defined
-        ## post serializer, user serializer, different functions for different tasks
         ## message field with status text?
 
         
