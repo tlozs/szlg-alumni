@@ -10,6 +10,7 @@ class Profile(models.Model):
     location = models.CharField(max_length=255, blank=True)
     job = models.CharField(max_length=255, blank=True)
     of_class = models.ForeignKey('Class', on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
+    can_post = models.BooleanField(default=False)
 
 class SocialSite(models.Model):
     SITE_CHOICES = [
@@ -30,6 +31,9 @@ class LifeEvent(models.Model):
     date = models.DateTimeField()
 
 class Post(models.Model):
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='posts')
+    title = models.CharField(max_length=255)
+    image = models.URLField(max_length=255, blank=True)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     VISIBILITY_CHOICES = [
@@ -37,6 +41,11 @@ class Post(models.Model):
         ('PRI', 'Privát'),
     ]
     visibility = models.CharField(max_length=3, choices=VISIBILITY_CHOICES)
+    TYPE_CHOICES = [
+        ('ES', 'Esemény'),
+        ('HI', 'Hír'),
+    ]
+    type_of_post = models.CharField(max_length=2, choices=TYPE_CHOICES)
 
 class Class(models.Model):
     @property

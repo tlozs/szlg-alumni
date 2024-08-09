@@ -1,18 +1,22 @@
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
-from APP.models import Profile, Class, SocialSite, LifeEvent
+from APP.models import Profile, Class, SocialSite, LifeEvent, Post
 from django.core.validators import URLValidator
 import datetime
 
-def seriailze_user(user, token):
+def validate_token(token):
+    if not User.objects.filter(auth_token__key=token).exists():
+        raise serializers.ValidationError('Invalid token.')
+
+def seriailze_user(user, token=""):
     profile = user.profile if hasattr(user, 'profile') else None
     social_sites = profile.social_sites.all() if profile else None
     life_events = profile.life_events.all() if profile else None
     of_class = profile.of_class if profile else None
     year = of_class.year if of_class else None
     return {
-        'token': token.key,
+        'token': token.key if token else "",
         'user_id': user.id,
         'email': user.email,
         'username': user.username,
@@ -23,6 +27,7 @@ def seriailze_user(user, token):
         'profile_picture': profile.profile_picture if profile else "",
         'location': profile.location if profile else "",
         'job': profile.job if profile else "",
+        'can_post': profile.can_post if profile else False,
 
         'social_sites': [{'site': site.site, 'url': site.url} for site in social_sites] if social_sites else "",
 
@@ -38,6 +43,19 @@ def seriailze_user(user, token):
         'year_id': year.id if year else "",
         'year_link_to_group': year.link_to_group if year else "",
     }
+
+def serialize_post(post):
+    return {
+            'id': post.id,
+            'author': f'{post.author.last_name} {post.author.first_name}',
+            'author_image': post.author.profile.profile_picture,
+            'title': post.title,
+            'image': post.image,
+            'content': post.content,
+            'created_at': post.created_at,
+            'visibility': post.visibility,
+            'type_of_post': post.type_of_post,
+        }
 
 def merge_social_database_with_incoming(profile, new):
     new_data = {site['site']: site['url'] for site in new}
@@ -124,7 +142,9 @@ class TokenUserAuthenticationSerializer(serializers.Serializer):
                     raise serializers.ValidationError('Incorrect password.')
                 else:
                     token, created = Token.objects.get_or_create(user=user)
-                    return seriailze_user(user, token)
+                    return {
+                        'token': token.key,
+                    }
                 
 class CreateAccountSerializer(serializers.Serializer):
     class Meta:
@@ -155,12 +175,15 @@ class CreateAccountSerializer(serializers.Serializer):
         password = validated_data.get('password')
 
         user = User.objects.create_user(username=username, email=email, password=password)
-        return seriailze_user(user, Token.objects.create(user=user))
+        token, created = Token.objects.get_or_create(user=user)
+        return {
+            'token': token.key,
+        }
     
 class EditProfileSerializer(serializers.Serializer):
     class Meta:
         model = User, Profile
-        fields = ['email', 'username', 'first_name', 'last_name', 'profile_picture', 'social_sites', 'life_events', 'location', 'job', 'of_class']
+        fields = ['email', 'username', 'first_name', 'last_name', 'profile_picture', 'social_sites', 'life_events', 'location', 'job', 'of_class', 'can_post']
     
     token = serializers.CharField()
     email = serializers.EmailField(max_length=255, required=False)
@@ -173,6 +196,7 @@ class EditProfileSerializer(serializers.Serializer):
     location = serializers.CharField(max_length=255, allow_blank=True, required=False)
     job = serializers.CharField(max_length=255, allow_blank=True, required=False)
     class_id = serializers.IntegerField(required=False)
+    can_post = serializers.BooleanField(required=False)
 
     def validate(self, attrs):
         token = attrs.get('token')
@@ -187,10 +211,7 @@ class EditProfileSerializer(serializers.Serializer):
         job = attrs.get('job')
         class_id = attrs.get('class_id')
 
-        if not token:
-            raise serializers.ValidationError('Token is required.')
-        if not User.objects.filter(auth_token__key=token).exists():
-            raise serializers.ValidationError('Invalid token.')
+        validate_token(token)
         if not (email or username or first_name or last_name or profile_picture or social_sites or life_events or location or job or class_id):
             raise serializers.ValidationError('Do not spam with empty requests.')
         user = User.objects.get(auth_token__key=token)
@@ -207,7 +228,7 @@ class EditProfileSerializer(serializers.Serializer):
                 if not (site and url):
                     raise serializers.ValidationError('Both site and url fields are required for social sites.')
                 if site not in [pair[0] for pair in SocialSite.SITE_CHOICES]:
-                    raise serializers.ValidationError(f'Invalid social site {site}.')
+                    raise serializers.ValidationError(f'Invalid social site {site}. Must be one of {SocialSite.SITE_CHOICES}.')
                 try:
                     URLValidator()(url)
                 except:
@@ -219,11 +240,11 @@ class EditProfileSerializer(serializers.Serializer):
                 if not (event and date):
                     raise serializers.ValidationError('Both event and date fields are required for life events.')
                 if event not in [pair[0] for pair in LifeEvent.EVENT_CHOICES]:
-                    raise serializers.ValidationError(f'Invalid life event {event}.')
+                    raise serializers.ValidationError(f'Invalid life event {event}. Must be one of {LifeEvent.EVENT_CHOICES}.')
                 try:
                     datetime.datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ')
                 except:
-                    raise serializers.ValidationError(f'Invalid date format for life event {event}.')        
+                    raise serializers.ValidationError(f'Invalid date format for life event {event}. Must be in the format YYYY-MM-DDTHH:MM:SSZ')        
         
         return attrs
     
@@ -262,4 +283,125 @@ class EditProfileSerializer(serializers.Serializer):
             if class_id:
                 profile.of_class = Class.objects.get(id=class_id)
                 profile.save()
+            can_post = validated_data.get('can_post')
+            if can_post:
+                profile.can_post = can_post
+                profile.save()
         return seriailze_user(user, Token.objects.get(user=user))
+
+class GetUsersSerializer(serializers.Serializer):
+    class Meta:
+        model = User
+        fields = ['token']
+    
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        token = attrs.get('token')
+        validate_token(token)
+        return attrs
+    
+    def get_users(self, validated_data):
+        users = User.objects.all()
+        return [seriailze_user(user) for user in users]
+    
+class GetMeSerializer(serializers.Serializer):
+    class Meta:
+        model = User
+        fields = ['token']
+    
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        token = attrs.get('token')
+        validate_token(token)
+        return attrs
+    
+    def get_me(self, validated_data):
+        user = User.objects.get(auth_token__key=validated_data.get('token'))
+        return seriailze_user(user)
+
+class CreatePostSerializer(serializers.Serializer):
+    class Meta:
+        model = Post
+        fields = ['content', 'created_at', 'visibility']
+
+    token = serializers.CharField()
+    title = serializers.CharField()
+    image = serializers.URLField()
+    content = serializers.CharField()
+    visibility = serializers.CharField()
+    type_of_post = serializers.CharField()
+
+    def validate(self, attrs):
+        token = attrs.get('token')
+        content = attrs.get('content')
+        visibility = attrs.get('visibility')
+        type_of_post = attrs.get('type_of_post')
+
+        validate_token(token)
+        if not content:
+            raise serializers.ValidationError('Content is required.')
+        if visibility not in [pair[0] for pair in Post.VISIBILITY_CHOICES]:
+            raise serializers.ValidationError(f'Invalid visibility option {visibility}. Must be one of {Post.VISIBILITY_CHOICES}.')
+        if type_of_post not in [pair[0] for pair in Post.TYPE_CHOICES]:
+            raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
+
+        ## get posts, by id, by author, by visibility(, by date)
+        ## get user by id??
+        ## post.serialize in models?
+        ## cannot set user can_post if first last name not defined
+        ## post serializer, user serializer, different functions for different tasks
+        ## message field with status text?
+
+        
+        return attrs
+    
+    def create(self, validated_data):
+        author = User.objects.get(auth_token__key=validated_data.get('token'))
+        title = validated_data.get('title')
+        image = validated_data.get('image')
+        content = validated_data.get('content')
+        visibility = validated_data.get('visibility')
+        type_of_post = validated_data.get('type_of_post')
+        post = Post.objects.create(author=author, title=title, image=image, content=content, visibility=visibility, type_of_post=type_of_post)
+        return serialize_post(post)
+
+class GetPostsSerializer(serializers.Serializer):
+    class Meta:
+        model = User
+        fields = ['token']
+    
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        token = attrs.get('token')
+        validate_token(token)
+        return attrs
+    
+    def get_posts(self, validated_data):
+        user = User.objects.get(auth_token__key=validated_data.get('token'))
+        posts = Post.objects.all()
+        return [serialize_post(post) for post in posts]
+    
+class DeletePostSerializer(serializers.Serializer):
+    class Meta:
+        model = Post
+        fields = ['token', 'post_id']
+
+    token = serializers.CharField()
+    post_id = serializers.IntegerField()
+
+    def validate(self, attrs):
+        token = attrs.get('token')
+        post_id = attrs.get('post_id')
+
+        validate_token(token)
+        if not Post.objects.filter(id=post_id).exists():
+            raise serializers.ValidationError(f'Post with id {post_id} does not exist.')
+        return attrs
+    
+    def delete_post(self, validated_data):
+        post = Post.objects.get(id=validated_data.get('post_id'))
+        post.delete()
+        return {'message': 'Post deleted.'}
