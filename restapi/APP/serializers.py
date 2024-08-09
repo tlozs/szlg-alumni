@@ -210,6 +210,10 @@ class EditProfileSerializer(serializers.Serializer):
         location = attrs.get('location')
         job = attrs.get('job')
         class_id = attrs.get('class_id')
+        can_post = attrs.get('can_post')
+
+        if can_post is not None and not (first_name and last_name):
+            raise serializers.ValidationError('You must provide first name and last name to enable posting.')
 
         validate_token(token)
         if not (email or username or first_name or last_name or profile_picture or social_sites or life_events or location or job or class_id):
@@ -347,8 +351,6 @@ class CreatePostSerializer(serializers.Serializer):
         if type_of_post not in [pair[0] for pair in Post.TYPE_CHOICES]:
             raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
 
-        ## get posts, by id, by author, by visibility(, by date)
-        ## post.serialize in models?
         ## cannot set user can_post if first last name not defined
         ## post serializer, user serializer, different functions for different tasks
         ## message field with status text?
