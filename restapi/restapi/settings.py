@@ -30,6 +30,9 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '167.172.168.238']
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
+CORS_ALLOW_HEADERS = ["accept", "authorization", "content-type", "origin"]
+CORS_ALLOW_CREDENTIALS = True
 
 # Application definition
 
