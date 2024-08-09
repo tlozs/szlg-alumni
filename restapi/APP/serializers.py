@@ -348,7 +348,6 @@ class CreatePostSerializer(serializers.Serializer):
             raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
 
         ## get posts, by id, by author, by visibility(, by date)
-        ## get user by id??
         ## post.serialize in models?
         ## cannot set user can_post if first last name not defined
         ## post serializer, user serializer, different functions for different tasks
@@ -372,16 +371,16 @@ class GetPostsSerializer(serializers.Serializer):
         model = User
         fields = ['token']
     
-    token = serializers.CharField()
+    token = serializers.CharField(required=False)
 
     def validate(self, attrs):
         token = attrs.get('token')
-        validate_token(token)
+        if token:
+            validate_token(token)
         return attrs
     
     def get_posts(self, validated_data):
-        user = User.objects.get(auth_token__key=validated_data.get('token'))
-        posts = Post.objects.all()
+        posts = Post.objects.all() if validated_data.get('token') else Post.objects.filter(visibility='PUB')
         return [serialize_post(post) for post in posts]
     
 class DeletePostSerializer(serializers.Serializer):
