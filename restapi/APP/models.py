@@ -32,6 +32,8 @@ class LifeEvent(models.Model):
 
 class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='posts')
+    title = models.CharField(max_length=255)
+    image = models.URLField(max_length=255, blank=True)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     VISIBILITY_CHOICES = [
@@ -39,6 +41,11 @@ class Post(models.Model):
         ('PRI', 'Privát'),
     ]
     visibility = models.CharField(max_length=3, choices=VISIBILITY_CHOICES)
+    TYPE_CHOICES = [
+        ('ES', 'Esemény'),
+        ('HI', 'Hír'),
+    ]
+    type_of_post = models.CharField(max_length=2, choices=TYPE_CHOICES)
 
 class Class(models.Model):
     @property
