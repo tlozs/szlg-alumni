@@ -340,7 +340,10 @@ class CreatePostSerializer(serializers.Serializer):
             raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
 
         ## message field with status text?
+        ## email visible to others?
 
+        ## local seettings
+        ## dropletről pusholni a settings py database részt
         
         return attrs
     
