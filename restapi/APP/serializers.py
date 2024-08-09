@@ -23,6 +23,7 @@ def seriailze_user(user, token):
         'profile_picture': profile.profile_picture if profile else "",
         'location': profile.location if profile else "",
         'job': profile.job if profile else "",
+        'can_post': profile.can_post if profile else False,
 
         'social_sites': [{'site': site.site, 'url': site.url} for site in social_sites] if social_sites else "",
 
@@ -38,6 +39,15 @@ def seriailze_user(user, token):
         'year_id': year.id if year else "",
         'year_link_to_group': year.link_to_group if year else "",
     }
+
+def serialize_post(post):
+    return {
+            'id': post.id,
+            'author': post.author.username,
+            'content': post.content,
+            'created_at': post.created_at,
+            'visibility': post.visibility,
+        }
 
 def merge_social_database_with_incoming(profile, new):
     new_data = {site['site']: site['url'] for site in new}
@@ -123,7 +133,7 @@ class TokenUserAuthenticationSerializer(serializers.Serializer):
                 if not user.check_password(password):
                     raise serializers.ValidationError('Incorrect password.')
                 else:
-                    token, created = Token.objects.get_or_create(user=user)
+                    token = Token.objects.get_or_create(user=user)
                     return seriailze_user(user, token)
                 
 class CreateAccountSerializer(serializers.Serializer):
@@ -173,6 +183,7 @@ class EditProfileSerializer(serializers.Serializer):
     location = serializers.CharField(max_length=255, allow_blank=True, required=False)
     job = serializers.CharField(max_length=255, allow_blank=True, required=False)
     class_id = serializers.IntegerField(required=False)
+    can_post = serializers.BooleanField(required=False)
 
     def validate(self, attrs):
         token = attrs.get('token')
@@ -186,6 +197,7 @@ class EditProfileSerializer(serializers.Serializer):
         location = attrs.get('location')
         job = attrs.get('job')
         class_id = attrs.get('class_id')
+        can_post = attrs.get('can_post')
 
         if not token:
             raise serializers.ValidationError('Token is required.')
@@ -262,6 +274,10 @@ class EditProfileSerializer(serializers.Serializer):
             if class_id:
                 profile.of_class = Class.objects.get(id=class_id)
                 profile.save()
+            can_post = validated_data.get('can_post')
+            if can_post:
+                profile.can_post = can_post
+                profile.save()
         return seriailze_user(user, Token.objects.get(user=user))
 
 class CreatePostSerializer(serializers.Serializer):
@@ -287,19 +303,17 @@ class CreatePostSerializer(serializers.Serializer):
         if visibility not in [pair[0] for pair in Post.VISIBILITY_CHOICES]:
             raise serializers.ValidationError(f'Invalid visibility option {visibility}. Must be one of {Post.VISIBILITY_CHOICES}.')
         
-        ## User flag to be able to post?????
-        ## post author?????
         ## get posts, by id, by author, by visibility(, by date)
         ## edit posts
+        ## get users
+        ## post.serialize in models?
+
         
         return attrs
     
     def create(self, validated_data):
+        author = User.objects.get(auth_token__key=validated_data.get('token'))
         content = validated_data.get('content')
         visibility = validated_data.get('visibility')
-        post = Post.objects.create(content=content, visibility=visibility)
-        return {
-            'content': post.content,
-            'created_at': post.created_at,
-            'visibility': post.visibility,
-        }
+        post = Post.objects.create(author=author, content=content, visibility=visibility)
+        return serialize_post(post)
