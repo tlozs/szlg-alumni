@@ -5,6 +5,12 @@ from APP.models import Profile, Class, SocialSite, LifeEvent, Post
 from django.core.validators import URLValidator
 import datetime
 
+def validate_token(token):
+    if not token:
+        raise serializers.ValidationError('Token is required.')
+    if not User.objects.filter(auth_token__key=token).exists():
+        raise serializers.ValidationError('Invalid token.')
+
 def seriailze_user(user, token=""):
     profile = user.profile if hasattr(user, 'profile') else None
     social_sites = profile.social_sites.all() if profile else None
@@ -207,10 +213,7 @@ class EditProfileSerializer(serializers.Serializer):
         job = attrs.get('job')
         class_id = attrs.get('class_id')
 
-        if not token:
-            raise serializers.ValidationError('Token is required.')
-        if not User.objects.filter(auth_token__key=token).exists():
-            raise serializers.ValidationError('Invalid token.')
+        validate_token(token)
         if not (email or username or first_name or last_name or profile_picture or social_sites or life_events or location or job or class_id):
             raise serializers.ValidationError('Do not spam with empty requests.')
         user = User.objects.get(auth_token__key=token)
@@ -297,12 +300,7 @@ class GetUsersSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         token = attrs.get('token')
-
-        if not token:
-            raise serializers.ValidationError('Token is required.')
-        if not User.objects.filter(auth_token__key=token).exists():
-            raise serializers.ValidationError('Invalid token.')
-        
+        validate_token(token)
         return attrs
     
     def get_users(self, validated_data):
@@ -318,12 +316,7 @@ class GetMeSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         token = attrs.get('token')
-
-        if not token:
-            raise serializers.ValidationError('Token is required.')
-        if not User.objects.filter(auth_token__key=token).exists():
-            raise serializers.ValidationError('Invalid token.')
-        
+        validate_token(token)
         return attrs
     
     def get_me(self, validated_data):
@@ -348,10 +341,7 @@ class CreatePostSerializer(serializers.Serializer):
         visibility = attrs.get('visibility')
         type_of_post = attrs.get('type_of_post')
 
-        if not token:
-            raise serializers.ValidationError('Token is required.')
-        if not User.objects.filter(auth_token__key=token).exists():
-            raise serializers.ValidationError('Invalid token.')
+        validate_token(token)
         if not content:
             raise serializers.ValidationError('Content is required.')
         if visibility not in [pair[0] for pair in Post.VISIBILITY_CHOICES]:
@@ -363,7 +353,6 @@ class CreatePostSerializer(serializers.Serializer):
         ## edit posts
         ## get user by id??
         ## post.serialize in models?
-        ##validate token separate function
         ## cannot set user can_post if first last name not defined
 
         
@@ -388,12 +377,7 @@ class GetPostsSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         token = attrs.get('token')
-
-        if not token:
-            raise serializers.ValidationError('Token is required.')
-        if not User.objects.filter(auth_token__key=token).exists():
-            raise serializers.ValidationError('Invalid token.')
-        
+        validate_token(token)
         return attrs
     
     def get_posts(self, validated_data):
