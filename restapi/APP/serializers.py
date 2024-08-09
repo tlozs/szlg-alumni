@@ -343,6 +343,7 @@ class CreatePostSerializer(serializers.Serializer):
         ## email visible to others?
 
         ## local seettings
+        ## secret key local settingsbe
         ## dropletről pusholni a settings py database részt
         
         return attrs
