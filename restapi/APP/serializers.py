@@ -133,8 +133,9 @@ class TokenUserAuthenticationSerializer(serializers.Serializer):
                 if not user.check_password(password):
                     raise serializers.ValidationError('Incorrect password.')
                 else:
-                    token = Token.objects.get_or_create(user=user)
-                    return seriailze_user(user, token)
+                    return {
+                        'token': Token.objects.get_or_create(user=user).key,
+                    }
                 
 class CreateAccountSerializer(serializers.Serializer):
     class Meta:
@@ -165,7 +166,9 @@ class CreateAccountSerializer(serializers.Serializer):
         password = validated_data.get('password')
 
         user = User.objects.create_user(username=username, email=email, password=password)
-        return seriailze_user(user, Token.objects.create(user=user))
+        return {
+            'token': Token.objects.get_or_create(user=user).key,
+        }
     
 class EditProfileSerializer(serializers.Serializer):
     class Meta:
@@ -197,7 +200,6 @@ class EditProfileSerializer(serializers.Serializer):
         location = attrs.get('location')
         job = attrs.get('job')
         class_id = attrs.get('class_id')
-        can_post = attrs.get('can_post')
 
         if not token:
             raise serializers.ValidationError('Token is required.')
