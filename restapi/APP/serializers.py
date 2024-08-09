@@ -258,6 +258,7 @@ class EditProfileSerializer(serializers.Serializer):
         user.username = validated_data.get('username', user.username)
         user.first_name = validated_data.get('first_name', user.first_name)
         user.last_name = validated_data.get('last_name', user.last_name)
+        user.save()
         profile = user.profile if hasattr(user, 'profile') else None
         if profile:
             profile.profile_picture = validated_data.get('profile_picture', profile.profile_picture)
@@ -311,7 +312,7 @@ class GetUsersSerializer(serializers.Serializer):
     
     def get_me(self, validated_data):
         user = User.objects.get(auth_token__key=validated_data.get('token'))
-        return seriailze_user(user)
+        return seriailze_user(user, Token.objects.get(user=user))
 
 class CreatePostSerializer(serializers.Serializer):
     class Meta:
@@ -342,10 +343,6 @@ class CreatePostSerializer(serializers.Serializer):
         ## message field with status text?
         ## email visible to others?
 
-        ## local seettings
-        ## secret key local settingsbe
-        ## dropletről pusholni a settings py database részt
-        
         return attrs
     
     def create(self, validated_data):
