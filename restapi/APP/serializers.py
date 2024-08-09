@@ -43,10 +43,14 @@ def seriailze_user(user, token=""):
 def serialize_post(post):
     return {
             'id': post.id,
-            'author': post.author.username,
+            'author': f'{post.author.last_name} {post.author.first_name}',
+            'author_image': post.author.profile.profile_picture,
+            'title': post.title,
+            'image': post.image,
             'content': post.content,
             'created_at': post.created_at,
             'visibility': post.visibility,
+            'type_of_post': post.type_of_post,
         }
 
 def merge_social_database_with_incoming(profile, new):
@@ -332,13 +336,17 @@ class CreatePostSerializer(serializers.Serializer):
         fields = ['content', 'created_at', 'visibility']
 
     token = serializers.CharField()
+    title = serializers.CharField()
+    image = serializers.URLField()
     content = serializers.CharField()
     visibility = serializers.CharField()
+    type_of_post = serializers.CharField()
 
     def validate(self, attrs):
         token = attrs.get('token')
         content = attrs.get('content')
         visibility = attrs.get('visibility')
+        type_of_post = attrs.get('type_of_post')
 
         if not token:
             raise serializers.ValidationError('Token is required.')
@@ -348,18 +356,47 @@ class CreatePostSerializer(serializers.Serializer):
             raise serializers.ValidationError('Content is required.')
         if visibility not in [pair[0] for pair in Post.VISIBILITY_CHOICES]:
             raise serializers.ValidationError(f'Invalid visibility option {visibility}. Must be one of {Post.VISIBILITY_CHOICES}.')
-        
+        if type_of_post not in [pair[0] for pair in Post.TYPE_CHOICES]:
+            raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
+
         ## get posts, by id, by author, by visibility(, by date)
         ## edit posts
-        ## get users
+        ## get user by id??
         ## post.serialize in models?
+        ##validate token separate function
+        ## cannot set user can_post if first last name not defined
 
         
         return attrs
     
     def create(self, validated_data):
         author = User.objects.get(auth_token__key=validated_data.get('token'))
+        title = validated_data.get('title')
+        image = validated_data.get('image')
         content = validated_data.get('content')
         visibility = validated_data.get('visibility')
-        post = Post.objects.create(author=author, content=content, visibility=visibility)
+        type_of_post = validated_data.get('type_of_post')
+        post = Post.objects.create(author=author, title=title, image=image, content=content, visibility=visibility, type_of_post=type_of_post)
         return serialize_post(post)
+
+class GetPostsSerializer(serializers.Serializer):
+    class Meta:
+        model = User
+        fields = ['token']
+    
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        token = attrs.get('token')
+
+        if not token:
+            raise serializers.ValidationError('Token is required.')
+        if not User.objects.filter(auth_token__key=token).exists():
+            raise serializers.ValidationError('Invalid token.')
+        
+        return attrs
+    
+    def get_posts(self, validated_data):
+        user = User.objects.get(auth_token__key=validated_data.get('token'))
+        posts = Post.objects.all()
+        return [serialize_post(post) for post in posts]
