@@ -6,8 +6,6 @@ from django.core.validators import URLValidator
 import datetime
 
 def validate_token(token):
-    if not token:
-        raise serializers.ValidationError('Token is required.')
     if not User.objects.filter(auth_token__key=token).exists():
         raise serializers.ValidationError('Invalid token.')
 
@@ -350,10 +348,11 @@ class CreatePostSerializer(serializers.Serializer):
             raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
 
         ## get posts, by id, by author, by visibility(, by date)
-        ## edit posts
         ## get user by id??
         ## post.serialize in models?
         ## cannot set user can_post if first last name not defined
+        ## post serializer, user serializer, different functions for different tasks
+        ## message field with status text?
 
         
         return attrs
@@ -384,3 +383,25 @@ class GetPostsSerializer(serializers.Serializer):
         user = User.objects.get(auth_token__key=validated_data.get('token'))
         posts = Post.objects.all()
         return [serialize_post(post) for post in posts]
+    
+class DeletePostSerializer(serializers.Serializer):
+    class Meta:
+        model = Post
+        fields = ['token', 'post_id']
+
+    token = serializers.CharField()
+    post_id = serializers.IntegerField()
+
+    def validate(self, attrs):
+        token = attrs.get('token')
+        post_id = attrs.get('post_id')
+
+        validate_token(token)
+        if not Post.objects.filter(id=post_id).exists():
+            raise serializers.ValidationError(f'Post with id {post_id} does not exist.')
+        return attrs
+    
+    def delete_post(self, validated_data):
+        post = Post.objects.get(id=validated_data.get('post_id'))
+        post.delete()
+        return {'message': 'Post deleted.'}
