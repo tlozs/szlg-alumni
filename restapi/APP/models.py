@@ -10,7 +10,7 @@ class Profile(models.Model):
         return f"{self.user.username} [{self.user.email}]"
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    profile_picture = models.URLField(max_length=255, blank=True)
+    profile_picture = models.URLField(max_length=255, default='https://i.postimg.cc/hvhBb2vp/Group-3.png')
     social_sites = models.ManyToManyField('SocialSite', blank=True, related_name='profile')
     life_events = models.ManyToManyField('LifeEvent', blank=True, related_name='profile')
     location = models.CharField(max_length=255, blank=True)
