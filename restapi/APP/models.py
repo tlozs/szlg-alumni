@@ -3,6 +3,12 @@ from django.contrib.auth.models import User
 import datetime
 
 class Profile(models.Model):
+    class Meta:
+        verbose_name = 'Profile'
+        verbose_name_plural = 'Profiles'
+    def __str__(self):
+        return f"{self.user.username} [{self.user.email}]"
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     profile_picture = models.URLField(max_length=255, blank=True)
     social_sites = models.ManyToManyField('SocialSite', blank=True, related_name='profile')
@@ -13,6 +19,13 @@ class Profile(models.Model):
     can_post = models.BooleanField(default=False)
 
 class SocialSite(models.Model):
+    class Meta:
+        verbose_name = 'Social Site'
+        verbose_name_plural = 'Social Sites'
+
+    def __str__(self):
+        return f"{self.site} [{self.url}]"
+
     SITE_CHOICES = [
         ('FB', 'Facebook'),
         ('TW', 'Twitter'),
@@ -23,6 +36,13 @@ class SocialSite(models.Model):
     url = models.URLField(max_length=255, blank=True)
 
 class LifeEvent(models.Model):
+    class Meta:
+        verbose_name = 'Life Event'
+        verbose_name_plural = 'Life Events'
+    
+    def __str__(self):
+        return f"{self.event} [{self.date}]"
+    
     EVENT_CHOICES = [
         ('GY', 'Gyerekem született'),
         ('MH', 'Új munkahelyem lett'),
@@ -31,6 +51,13 @@ class LifeEvent(models.Model):
     date = models.DateTimeField()
 
 class Post(models.Model):
+    class Meta:
+        verbose_name = 'Post'
+        verbose_name_plural = 'Posts'
+
+    def __str__(self):
+        return f"{self.title} [{self.author}] post on {self.created_at}"
+
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='posts')
     title = models.CharField(max_length=255)
     image = models.URLField(max_length=255, blank=True)
@@ -48,6 +75,13 @@ class Post(models.Model):
     type_of_post = models.CharField(max_length=2, choices=TYPE_CHOICES)
 
 class Class(models.Model):
+    class Meta:
+        verbose_name = 'Class'
+        verbose_name_plural = 'Classes'
+
+    def __str__(self):
+        return f"{self.start_year}-{self.end_year} {self.section}"
+
     @property
     def start_year(self):
         return int(self.year.start_year)
@@ -70,21 +104,49 @@ class Class(models.Model):
 
 
 class Year(models.Model):
+    class Meta:
+        verbose_name = 'Year'
+        verbose_name_plural = 'Years'
+    
+    def __str__(self):
+        return f"{self.start_year}"
+
     start_year = models.IntegerField(default=datetime.date.today().year-4)
     link_to_group = models.URLField(max_length=255, blank=True)
 
 class Poll(models.Model):
+    class Meta:
+        verbose_name = 'Poll'
+        verbose_name_plural = 'Polls'
+
+    def __str__(self):
+        return f"{self.question} [{self.created_at}]"
+
     question = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True) 
     end_date = models.DateTimeField(blank=True, null=True)
     options = models.ManyToManyField('Option', related_name='poll')
 
 class Option(models.Model):
+    class Meta:
+        verbose_name = 'Option'
+        verbose_name_plural = 'Options'
+
+    def __str__(self):
+        return f"{self.poll.question} {self.content} [{self.votes}]"
+
     content = models.TextField()
     votes = models.IntegerField(default=0)
     users = models.ManyToManyField(User, blank=True)
 
 class Event(models.Model):
+    class Meta:
+        verbose_name = 'Event'
+        verbose_name_plural = 'Events'
+
+    def __str__(self):
+        return f"{self.title} at {self.location} [{self.start_date}]"
+
     title = models.CharField(max_length=255)
     description = models.TextField()
     start_date = models.DateTimeField()
