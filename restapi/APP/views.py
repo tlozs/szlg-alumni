@@ -49,6 +49,15 @@ class GetMeView(APIView):
             get_result = serializer.get_me(serializer.validated_data)
             return Response(get_result, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class GetUserView(APIView):
+    def post(self, request, *args, **kwargs):
+        user_id = kwargs.get('user_id')
+        serializer = GetUsersSerializer(data=request.data, context={'user_id': user_id})
+        if serializer.is_valid():
+            get_result = serializer.get_by_id(serializer.validated_data)
+            return Response(get_result, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class GetPostsView(APIView):
     def post(self, request, *args, **kwargs):

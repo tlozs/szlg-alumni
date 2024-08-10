@@ -310,7 +310,10 @@ class GetUsersSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         token = attrs.get('token')
+        user_id = self.context.get('user_id')
         validate_token(token)
+        if user_id and not User.objects.filter(id=user_id).exists():
+            raise serializers.ValidationError(f'User with id {user_id} does not exist.')
         return attrs
     
     def get_users(self, validated_data):
@@ -320,6 +323,11 @@ class GetUsersSerializer(serializers.Serializer):
     def get_me(self, validated_data):
         user = User.objects.get(auth_token__key=validated_data.get('token'))
         return seriailze_user(user, Token.objects.get(user=user))
+    
+    def get_by_id(self, validated_data):
+        user_id = self.context.get('user_id')
+        user = User.objects.get(id=user_id)
+        return seriailze_user(user)
 
 class CreatePostSerializer(serializers.Serializer):
     class Meta:
@@ -352,6 +360,7 @@ class CreatePostSerializer(serializers.Serializer):
 
         ## email visible to others?
         ## url users/me...
+        ## delete post only to authorized
 
         return attrs
     
