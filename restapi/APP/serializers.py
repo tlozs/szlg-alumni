@@ -339,7 +339,7 @@ class CreatePostSerializer(serializers.Serializer):
 
         validate_token(token)
         user = User.objects.get(auth_token__key=token)
-        if not user.profile and not user.profile.can_post:
+        if user.profile and not user.profile.can_post:
             raise serializers.ValidationError('You are not allowed to post.')
         if not content:
             raise serializers.ValidationError('Content is required.')
@@ -349,6 +349,7 @@ class CreatePostSerializer(serializers.Serializer):
             raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
 
         ## email visible to others?
+        ## object to string admin site
 
         return attrs
     
