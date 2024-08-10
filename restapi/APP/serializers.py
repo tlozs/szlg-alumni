@@ -406,7 +406,9 @@ class DeletePostSerializer(serializers.Serializer):
         validate_token(token)
         if not Post.objects.filter(id=post_id).exists():
             raise serializers.ValidationError(f'Post with id {post_id} does not exist.')
-        if not Post.objects.get(id=post_id).author.auth_token.key == token:
+        author = Post.objects.get(id=post_id).author
+        request_user = User.objects.get(auth_token__key=token)
+        if author != request_user:
             raise serializers.ValidationError('You can only delete your posts.')
         return attrs
     
