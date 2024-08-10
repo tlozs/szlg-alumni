@@ -259,39 +259,38 @@ class EditProfileSerializer(serializers.Serializer):
         user.first_name = validated_data.get('first_name', user.first_name)
         user.last_name = validated_data.get('last_name', user.last_name)
         user.save()
-        profile = user.profile if hasattr(user, 'profile') else None
-        if profile:
-            profile.profile_picture = validated_data.get('profile_picture', profile.profile_picture)
-            profile.location = validated_data.get('location', profile.location)
-            profile.job = validated_data.get('job', profile.job)
+        profile = user.profile if hasattr(user, 'profile') else Profile.objects.create(user=user)
+        profile.profile_picture = validated_data.get('profile_picture', profile.profile_picture)
+        profile.location = validated_data.get('location', profile.location)
+        profile.job = validated_data.get('job', profile.job)
+        profile.save()
+
+        new_social_sites = validated_data.get('social_sites')
+        if new_social_sites:
+            current_social_sites = profile.social_sites.all()
+            if current_social_sites:
+                merge_social_database_with_incoming(profile, new_social_sites)
+            else:
+                for a_site in new_social_sites:
+                    profile.social_sites.create(site=a_site['site'], url=a_site['url'])
+
+        new_life_events = validated_data.get('life_events')
+        if new_life_events:
+            current_life_events = profile.life_events.all()
+            if current_life_events:
+                merge_event_database_with_incoming(profile, new_life_events)
+            else:
+                for an_event in new_life_events:
+                    profile.life_events.create(event=an_event['event'], date=an_event['date'])
+
+        class_id = validated_data.get('class_id')
+        if class_id:
+            profile.of_class = Class.objects.get(id=class_id)
             profile.save()
-
-            new_social_sites = validated_data.get('social_sites')
-            if new_social_sites:
-                current_social_sites = profile.social_sites.all()
-                if current_social_sites:
-                    merge_social_database_with_incoming(profile, new_social_sites)
-                else:
-                    for a_site in new_social_sites:
-                        profile.social_sites.create(site=a_site['site'], url=a_site['url'])
-
-            new_life_events = validated_data.get('life_events')
-            if new_life_events:
-                current_life_events = profile.life_events.all()
-                if current_life_events:
-                    merge_event_database_with_incoming(profile, new_life_events)
-                else:
-                    for an_event in new_life_events:
-                        profile.life_events.create(event=an_event['event'], date=an_event['date'])
-
-            class_id = validated_data.get('class_id')
-            if class_id:
-                profile.of_class = Class.objects.get(id=class_id)
-                profile.save()
-            can_post = validated_data.get('can_post')
-            if can_post:
-                profile.can_post = can_post
-                profile.save()
+        can_post = validated_data.get('can_post')
+        if can_post:
+            profile.can_post = can_post
+            profile.save()
         return seriailze_user(user, Token.objects.get(user=user))
 
 class GetUsersSerializer(serializers.Serializer):
@@ -333,6 +332,14 @@ class CreatePostSerializer(serializers.Serializer):
         type_of_post = attrs.get('type_of_post')
 
         validate_token(token)
+        user = User.objects.get(auth_token__key=token)
+        profile = user.profile if hasattr(user, 'profile') else None
+        if not profile:
+            raise serializers.ValidationError('You must have a profile to post.')
+        if not profile.profile_picture:
+            raise serializers.ValidationError('You must have a profile picture to post.')
+
+        # can post only if profile is set to allow posting
         if not content:
             raise serializers.ValidationError('Content is required.')
         if visibility not in [pair[0] for pair in Post.VISIBILITY_CHOICES]:
