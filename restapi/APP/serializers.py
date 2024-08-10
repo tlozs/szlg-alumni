@@ -10,10 +10,10 @@ def validate_token(token):
         raise serializers.ValidationError('Invalid token.')
 
 def seriailze_user(user, token=""):
-    profile = user.profile if hasattr(user, 'profile') else None
-    social_sites = profile.social_sites.all() if profile else None
-    life_events = profile.life_events.all() if profile else None
-    of_class = profile.of_class if profile else None
+    profile = user.profile
+    social_sites = profile.social_sites.all()
+    life_events = profile.life_events.all()
+    of_class = profile.of_class
     year = of_class.year if of_class else None
     return {
         'token': token.key if token else "",
@@ -23,11 +23,11 @@ def seriailze_user(user, token=""):
         'first_name': user.first_name,
         'last_name': user.last_name,
         
-        'profile_id': profile.id if profile else "",
-        'profile_picture': profile.profile_picture if profile else "",
-        'location': profile.location if profile else "",
-        'job': profile.job if profile else "",
-        'can_post': profile.can_post if profile else False,
+        'profile_id': profile.id,
+        'profile_picture': profile.profile_picture,
+        'location': profile.location,
+        'job': profile.job,
+        'can_post': profile.can_post,
 
         'social_sites': [{'site': site.site, 'url': site.url} for site in social_sites] if social_sites else "",
 
@@ -177,6 +177,7 @@ class CreateAccountSerializer(serializers.Serializer):
         password = validated_data.get('password')
 
         user = User.objects.create_user(username=username, email=email, password=password)
+        profile = Profile.objects.create(user=user)
         token, created = Token.objects.get_or_create(user=user)
         return {
             'token': token.key,
@@ -257,7 +258,7 @@ class EditProfileSerializer(serializers.Serializer):
         user.first_name = validated_data.get('first_name', user.first_name)
         user.last_name = validated_data.get('last_name', user.last_name)
         user.save()
-        profile = user.profile if hasattr(user, 'profile') else Profile.objects.create(user=user)
+        profile = user.profile
         profile.profile_picture = validated_data.get('profile_picture', profile.profile_picture)
         profile.location = validated_data.get('location', profile.location)
         profile.job = validated_data.get('job', profile.job)
@@ -335,9 +336,9 @@ class CreatePostSerializer(serializers.Serializer):
 
         validate_token(token)
         profile = User.objects.get(auth_token__key=token).profile
-        if profile and not profile.can_post:
+        if not profile.can_post:
             raise serializers.ValidationError('You are not allowed to post.')
-        if profile.can_post:
+        else:
             if not (profile.first_name and profile.last_name):
                 raise serializers.ValidationError('You must provide first name and last name to post.')
             if not profile.profile_picture:
