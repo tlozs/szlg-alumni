@@ -335,11 +335,12 @@ class CreatePostSerializer(serializers.Serializer):
         type_of_post = attrs.get('type_of_post')
 
         validate_token(token)
-        profile = User.objects.get(auth_token__key=token).profile
+        user = User.objects.get(auth_token__key=token)
+        profile = user.profile
         if not profile.can_post:
             raise serializers.ValidationError('You are not allowed to post.')
         else:
-            if not (profile.first_name and profile.last_name):
+            if not (user.first_name and user.last_name):
                 raise serializers.ValidationError('You must provide first name and last name to post.')
             if not profile.profile_picture:
                 raise serializers.ValidationError('You must have a profile picture to enable posting.')
