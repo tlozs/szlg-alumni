@@ -198,7 +198,6 @@ class EditProfileSerializer(serializers.Serializer):
     location = serializers.CharField(max_length=255, allow_blank=True, required=False)
     job = serializers.CharField(max_length=255, allow_blank=True, required=False)
     class_id = serializers.IntegerField(required=False)
-    can_post = serializers.BooleanField(required=False)
 
     def validate(self, attrs):
         token = attrs.get('token')
@@ -212,21 +211,12 @@ class EditProfileSerializer(serializers.Serializer):
         location = attrs.get('location')
         job = attrs.get('job')
         class_id = attrs.get('class_id')
-        can_post = attrs.get('can_post')
 
 
         validate_token(token)
         if not (email or username or first_name or last_name or profile_picture or social_sites or life_events or location or job or class_id):
             raise serializers.ValidationError('Do not spam with empty requests.')
         user = User.objects.get(auth_token__key=token)
-        if can_post is True:
-            if not (first_name and last_name):
-                raise serializers.ValidationError('You must provide first name and last name to enable posting.')
-            if not user.profile:
-                raise serializers.ValidationError('You must have a profile to enable posting.')
-            if not (user.profile.profile_picture or profile_picture):
-                raise serializers.ValidationError('You must have a profile picture to enable posting.')
-            
         if email and User.objects.filter(email=email).exclude(id=user.id).exists():
             raise serializers.ValidationError('Another user with this email already exists.')
         if username and User.objects.filter(username=username).exclude(id=user.id).exists():
@@ -295,10 +285,6 @@ class EditProfileSerializer(serializers.Serializer):
         if class_id:
             profile.of_class = Class.objects.get(id=class_id)
             profile.save()
-        can_post = validated_data.get('can_post')
-        if can_post:
-            profile.can_post = can_post
-            profile.save()
         return seriailze_user(user, Token.objects.get(user=user))
 
 class GetUsersSerializer(serializers.Serializer):
@@ -348,9 +334,14 @@ class CreatePostSerializer(serializers.Serializer):
         type_of_post = attrs.get('type_of_post')
 
         validate_token(token)
-        user = User.objects.get(auth_token__key=token)
-        if user.profile and not user.profile.can_post:
+        profile = User.objects.get(auth_token__key=token).profile
+        if profile and not profile.can_post:
             raise serializers.ValidationError('You are not allowed to post.')
+        if profile.can_post:
+            if not (profile.first_name and profile.last_name):
+                raise serializers.ValidationError('You must provide first name and last name to post.')
+            if not profile.profile_picture:
+                raise serializers.ValidationError('You must have a profile picture to enable posting.')
         if not content:
             raise serializers.ValidationError('Content is required.')
         if visibility not in [pair[0] for pair in Post.VISIBILITY_CHOICES]:
@@ -358,9 +349,11 @@ class CreatePostSerializer(serializers.Serializer):
         if type_of_post not in [pair[0] for pair in Post.TYPE_CHOICES]:
             raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
 
+            
+
         ## email visible to others?
         ## url users/me...
-        ## delete post only to authorized
+        ## create profile to registration automatically
 
         return attrs
     
