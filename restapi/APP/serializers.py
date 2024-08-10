@@ -125,18 +125,18 @@ class TokenUserAuthenticationSerializer(serializers.Serializer):
         fields = ['username', 'password']
     
     username = serializers.CharField(required=False)
-    email = serializers.EmailField(required=False)
     password = serializers.CharField()
 
     def validate(self, attrs):
         username = attrs.get('username')
-        email = attrs.get('email')
         password = attrs.get('password')
 
-        if not ((username or email) and password):
+        if not (username and password):
             raise serializers.ValidationError('Both username/email and password are required.')
         else:
-            user = User.objects.filter(username=username).first() if username else User.objects.filter(email=email).first()
+            user_name = User.objects.filter(username=username).first()
+            user_email = User.objects.filter(email=username).first()
+            user = user_name if user_name else user_email
             if not user:
                 raise serializers.ValidationError(f'User {username} does not exist.')
             else:
@@ -351,6 +351,7 @@ class CreatePostSerializer(serializers.Serializer):
             raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
 
         ## email visible to others?
+        ## url users/me...
 
         return attrs
     
