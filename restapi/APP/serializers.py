@@ -212,13 +212,19 @@ class EditProfileSerializer(serializers.Serializer):
         class_id = attrs.get('class_id')
         can_post = attrs.get('can_post')
 
-        if can_post is not None and not (first_name and last_name):
-            raise serializers.ValidationError('You must provide first name and last name to enable posting.')
 
         validate_token(token)
         if not (email or username or first_name or last_name or profile_picture or social_sites or life_events or location or job or class_id):
             raise serializers.ValidationError('Do not spam with empty requests.')
         user = User.objects.get(auth_token__key=token)
+        if can_post is True:
+            if not (first_name and last_name):
+                raise serializers.ValidationError('You must provide first name and last name to enable posting.')
+            if not user.profile:
+                raise serializers.ValidationError('You must have a profile to enable posting.')
+            if not (user.profile.profile_picture or profile_picture):
+                raise serializers.ValidationError('You must have a profile picture to enable posting.')
+            
         if email and User.objects.filter(email=email).exclude(id=user.id).exists():
             raise serializers.ValidationError('Another user with this email already exists.')
         if username and User.objects.filter(username=username).exclude(id=user.id).exists():
@@ -333,13 +339,8 @@ class CreatePostSerializer(serializers.Serializer):
 
         validate_token(token)
         user = User.objects.get(auth_token__key=token)
-        profile = user.profile if hasattr(user, 'profile') else None
-        if not profile:
-            raise serializers.ValidationError('You must have a profile to post.')
-        if not profile.profile_picture:
-            raise serializers.ValidationError('You must have a profile picture to post.')
-
-        # can post only if profile is set to allow posting
+        if not user.profile and not user.profile.can_post:
+            raise serializers.ValidationError('You are not allowed to post.')
         if not content:
             raise serializers.ValidationError('Content is required.')
         if visibility not in [pair[0] for pair in Post.VISIBILITY_CHOICES]:
@@ -347,7 +348,6 @@ class CreatePostSerializer(serializers.Serializer):
         if type_of_post not in [pair[0] for pair in Post.TYPE_CHOICES]:
             raise serializers.ValidationError(f'Invalid type of post {type_of_post}. Must be one of {Post.TYPE_CHOICES}.')
 
-        ## message field with status text?
         ## email visible to others?
 
         return attrs
