@@ -63,10 +63,10 @@ def merge_social_database_with_incoming(profile, new):
 
     # Update existing sites
     for a_site in new_data:
-        filtered = current_data.filter(site=a_site)
-        if filtered.exists():
-            if filtered.first().url != new_data[a_site]:
-                filtered.update(url=new_data[a_site])
+        currently_present_keys = current_data.filter(site=a_site)
+        if currently_present_keys.exists():
+            if currently_present_keys.first().url != new_data[a_site]:
+                currently_present_keys.update(url=new_data[a_site])
         else:
             profile.social_sites.create(site=a_site, url=new_data[a_site])
 
@@ -79,7 +79,7 @@ def merge_event_database_with_incoming(profile, new):
     new_data = [[event['event'], event['date']] for event in new]
     current_data = profile.life_events.all()
 
-    # Mark events to delete, maybe they can be reused
+    # Mark events that are not in the new data to delete them
     marked_to_delete = []
     for an_event in current_data:
         if [an_event.event, an_event.date.strftime('%Y-%m-%dT%H:%M:%SZ')] not in new_data:
@@ -87,7 +87,7 @@ def merge_event_database_with_incoming(profile, new):
 
     to_create = []
 
-    # Update existing events
+    # Update existing events based on the new data
     for an_event in new_data:
         filtered = current_data.filter(event=an_event[0])
         if filtered.exists():
@@ -103,7 +103,7 @@ def merge_event_database_with_incoming(profile, new):
         else:
             profile.life_events.create(event=an_event[0], date=an_event[1])
 
-    # Delete events that are not in the new data, or reuse them
+    # try to reuse marked events if possible, or delete them
     for an_event in marked_to_delete:
         target_object = an_event['object']
         if to_create:
@@ -354,7 +354,6 @@ class CreatePostSerializer(serializers.Serializer):
 
         ## email visible to others?
         ## url users/me...
-        ## create profile to registration automatically
 
         return attrs
     
